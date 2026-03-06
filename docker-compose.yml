@@ -1,0 +1,17 @@
+services:
+  cloudlaunch:
+    build: .
+    ports:
+      - "3002:3002"
+    environment:
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_REGION=${AWS_REGION:-us-east-1}
+      - PORT=3002
+      - NODE_ENV=production
+    volumes:
+      - cloudlaunch-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  cloudlaunch-data:

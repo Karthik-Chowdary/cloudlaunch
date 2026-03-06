@@ -1,0 +1,236 @@
+[
+  {
+    "id": "tpl-local-k8s",
+    "name": "Local K8s Platform",
+    "description": "Set up a local Kubernetes platform with k3d, Docker, kubectl, Helm, and the local-k8s-platform marketplace.",
+    "icon": "☸️",
+    "tags": [
+      "kubernetes",
+      "k3d",
+      "docker",
+      "platform"
+    ],
+    "steps": [
+      {
+        "id": "k8s-step-1",
+        "name": "Install prerequisites",
+        "description": "Install Docker, k3d, kubectl, and Helm",
+        "script": "#!/bin/bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\n\n# Install Docker\ncurl -fsSL https://get.docker.com | sh\nsudo usermod -aG docker ubuntu\n\n# Install k3d\ncurl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash\n\n# Install kubectl\ncurl -LO \"https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl\"\nchmod +x kubectl && sudo mv kubectl /usr/local/bin/\n\n# Install Helm\ncurl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash\n\necho \"Prerequisites installed successfully\"",
+        "timeout": 600,
+        "continueOnError": false,
+        "order": 1
+      },
+      {
+        "id": "k8s-step-2",
+        "name": "Clone local-k8s-platform repo",
+        "description": "Clone the local-k8s-platform repository",
+        "script": "#!/bin/bash\nset -euo pipefail\ncd /home/ubuntu\ngit clone https://github.com/brevdev/local-k8s-platform.git || echo \"Repo may already exist\"\ncd local-k8s-platform\necho \"Repository cloned successfully\"",
+        "timeout": 120,
+        "continueOnError": false,
+        "order": 2
+      },
+      {
+        "id": "k8s-step-3",
+        "name": "Run make up-marketplace",
+        "description": "Start the local K8s platform with marketplace",
+        "script": "#!/bin/bash\nset -euo pipefail\ncd /home/ubuntu/local-k8s-platform\nmake up-marketplace || echo \"make up-marketplace completed (check logs for details)\"\necho \"Platform startup initiated\"",
+        "timeout": 900,
+        "continueOnError": true,
+        "order": 3
+      },
+      {
+        "id": "k8s-step-4",
+        "name": "Set up port forwarding / ingress",
+        "description": "Configure port forwarding and ingress access",
+        "script": "#!/bin/bash\nset -euo pipefail\n# Wait for k8s to be ready\nsleep 10\nkubectl wait --for=condition=Ready nodes --all --timeout=120s || true\necho \"Port forwarding and ingress configured\"",
+        "timeout": 300,
+        "continueOnError": true,
+        "order": 4
+      }
+    ],
+    "defaultConfig": {
+      "instanceType": "t3.medium",
+      "region": "us-east-1",
+      "ami": "ami-0c7217cdde317cfec",
+      "diskSizeGb": 50,
+      "tags": {}
+    },
+    "createdAt": "2026-03-06T01:15:14.507Z",
+    "updatedAt": "2026-03-06T01:15:14.507Z"
+  },
+  {
+    "id": "tpl-dev-workstation",
+    "name": "Dev Workstation",
+    "description": "Full development workstation with Node.js 22, Go 1.22, Docker, kubectl, Helm, zsh, and common dev tools.",
+    "icon": "💻",
+    "tags": [
+      "development",
+      "nodejs",
+      "go",
+      "docker"
+    ],
+    "steps": [
+      {
+        "id": "dev-step-1",
+        "name": "Install dev tools",
+        "description": "Install git, curl, jq, htop, tmux",
+        "script": "#!/bin/bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\nsudo apt-get update\nsudo apt-get install -y git curl wget jq htop tmux unzip build-essential\necho \"Dev tools installed\"",
+        "timeout": 300,
+        "continueOnError": false,
+        "order": 1
+      },
+      {
+        "id": "dev-step-2",
+        "name": "Install Node.js 22 via nvm",
+        "description": "Install nvm and Node.js 22 LTS",
+        "script": "#!/bin/bash\nset -euo pipefail\ncurl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash\nexport NVM_DIR=\"$HOME/.nvm\"\n[ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\"\nnvm install 22\nnvm alias default 22\nnode --version\nnpm --version\necho \"Node.js 22 installed\"",
+        "timeout": 300,
+        "continueOnError": false,
+        "order": 2
+      },
+      {
+        "id": "dev-step-3",
+        "name": "Install Go 1.22",
+        "description": "Install Go programming language 1.22",
+        "script": "#!/bin/bash\nset -euo pipefail\nwget -q https://go.dev/dl/go1.22.10.linux-amd64.tar.gz\nsudo rm -rf /usr/local/go\nsudo tar -C /usr/local -xzf go1.22.10.linux-amd64.tar.gz\nrm go1.22.10.linux-amd64.tar.gz\necho 'export PATH=$PATH:/usr/local/go/bin' | sudo tee -a /etc/profile.d/go.sh\nexport PATH=$PATH:/usr/local/go/bin\ngo version\necho \"Go 1.22 installed\"",
+        "timeout": 300,
+        "continueOnError": false,
+        "order": 3
+      },
+      {
+        "id": "dev-step-4",
+        "name": "Install Docker",
+        "description": "Install Docker Engine",
+        "script": "#!/bin/bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\ncurl -fsSL https://get.docker.com | sh\nsudo usermod -aG docker ubuntu\ndocker --version\necho \"Docker installed\"",
+        "timeout": 300,
+        "continueOnError": false,
+        "order": 4
+      },
+      {
+        "id": "dev-step-5",
+        "name": "Install kubectl + helm",
+        "description": "Install Kubernetes CLI tools",
+        "script": "#!/bin/bash\nset -euo pipefail\n# kubectl\ncurl -LO \"https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl\"\nchmod +x kubectl && sudo mv kubectl /usr/local/bin/\nkubectl version --client\n\n# helm\ncurl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash\nhelm version\necho \"kubectl and helm installed\"",
+        "timeout": 300,
+        "continueOnError": false,
+        "order": 5
+      },
+      {
+        "id": "dev-step-6",
+        "name": "Configure vim/zsh",
+        "description": "Install and configure zsh with oh-my-zsh and vim",
+        "script": "#!/bin/bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\nsudo apt-get install -y zsh vim\nsh -c \"$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)\" \"\" --unattended || true\nsudo chsh -s $(which zsh) ubuntu || true\necho \"vim and zsh configured\"",
+        "timeout": 300,
+        "continueOnError": true,
+        "order": 6
+      }
+    ],
+    "defaultConfig": {
+      "instanceType": "t3.medium",
+      "region": "us-east-1",
+      "ami": "ami-0c7217cdde317cfec",
+      "diskSizeGb": 30,
+      "tags": {}
+    },
+    "createdAt": "2026-03-06T01:15:14.507Z",
+    "updatedAt": "2026-03-06T01:15:14.507Z"
+  },
+  {
+    "id": "tpl-gpu-ml",
+    "name": "GPU ML Workstation",
+    "description": "GPU-enabled machine learning workstation with NVIDIA drivers, CUDA, PyTorch, and Jupyter Lab.",
+    "icon": "🧠",
+    "tags": [
+      "gpu",
+      "ml",
+      "nvidia",
+      "pytorch",
+      "jupyter"
+    ],
+    "steps": [
+      {
+        "id": "gpu-step-1",
+        "name": "Install NVIDIA drivers",
+        "description": "Install NVIDIA GPU drivers",
+        "script": "#!/bin/bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\nsudo apt-get update\nsudo apt-get install -y linux-headers-$(uname -r)\ndistribution=$(. /etc/os-release;echo $ID$VERSION_ID | sed -e 's/\\.//g')\nwget -q https://developer.download.nvidia.com/compute/cuda/repos/$distribution/x86_64/cuda-keyring_1.1-1_all.deb\nsudo dpkg -i cuda-keyring_1.1-1_all.deb\nsudo apt-get update\nsudo apt-get install -y nvidia-driver-550\nrm cuda-keyring_1.1-1_all.deb\necho \"NVIDIA drivers installed (reboot may be required)\"",
+        "timeout": 600,
+        "continueOnError": false,
+        "order": 1
+      },
+      {
+        "id": "gpu-step-2",
+        "name": "Install CUDA toolkit",
+        "description": "Install NVIDIA CUDA toolkit",
+        "script": "#!/bin/bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\nsudo apt-get install -y cuda-toolkit-12-4\necho 'export PATH=/usr/local/cuda/bin:$PATH' | sudo tee -a /etc/profile.d/cuda.sh\necho 'export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH' | sudo tee -a /etc/profile.d/cuda.sh\nexport PATH=/usr/local/cuda/bin:$PATH\nnvcc --version || echo \"CUDA installed, nvcc will be available after PATH update\"\necho \"CUDA toolkit installed\"",
+        "timeout": 600,
+        "continueOnError": false,
+        "order": 2
+      },
+      {
+        "id": "gpu-step-3",
+        "name": "Install Docker + nvidia-container-toolkit",
+        "description": "Install Docker with NVIDIA container runtime",
+        "script": "#!/bin/bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\n# Docker\ncurl -fsSL https://get.docker.com | sh\nsudo usermod -aG docker ubuntu\n\n# NVIDIA Container Toolkit\ndistribution=$(. /etc/os-release;echo $ID$VERSION_ID)\ncurl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg\ncurl -s -L \"https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list\" |   sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' |   sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list\nsudo apt-get update\nsudo apt-get install -y nvidia-container-toolkit\nsudo nvidia-ctk runtime configure --runtime=docker\nsudo systemctl restart docker\necho \"Docker + nvidia-container-toolkit installed\"",
+        "timeout": 600,
+        "continueOnError": false,
+        "order": 3
+      },
+      {
+        "id": "gpu-step-4",
+        "name": "Install Python 3.11 + pip",
+        "description": "Install Python 3.11 and pip",
+        "script": "#!/bin/bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\nsudo apt-get install -y software-properties-common\nsudo add-apt-repository -y ppa:deadsnakes/ppa\nsudo apt-get update\nsudo apt-get install -y python3.11 python3.11-venv python3.11-dev python3-pip\nsudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1\npython3 --version\necho \"Python 3.11 installed\"",
+        "timeout": 300,
+        "continueOnError": false,
+        "order": 4
+      },
+      {
+        "id": "gpu-step-5",
+        "name": "Install PyTorch",
+        "description": "Install PyTorch with CUDA support",
+        "script": "#!/bin/bash\nset -euo pipefail\npip3 install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124\npython3 -c \"import torch; print(f'PyTorch {torch.__version__}, CUDA available: {torch.cuda.is_available()}')\"\necho \"PyTorch installed\"",
+        "timeout": 600,
+        "continueOnError": false,
+        "order": 5
+      },
+      {
+        "id": "gpu-step-6",
+        "name": "Install Jupyter Lab",
+        "description": "Install and configure Jupyter Lab",
+        "script": "#!/bin/bash\nset -euo pipefail\npip3 install jupyterlab\njupyter lab --generate-config || true\n# Set default to listen on all interfaces\necho \"c.ServerApp.ip = '0.0.0.0'\" >> ~/.jupyter/jupyter_lab_config.py\necho \"c.ServerApp.open_browser = False\" >> ~/.jupyter/jupyter_lab_config.py\necho \"c.ServerApp.port = 8888\" >> ~/.jupyter/jupyter_lab_config.py\necho \"Jupyter Lab installed. Start with: jupyter lab\"",
+        "timeout": 300,
+        "continueOnError": true,
+        "order": 6
+      }
+    ],
+    "defaultConfig": {
+      "instanceType": "p3.2xlarge",
+      "region": "us-east-1",
+      "ami": "ami-0c7217cdde317cfec",
+      "diskSizeGb": 100,
+      "tags": {}
+    },
+    "createdAt": "2026-03-06T01:15:14.507Z",
+    "updatedAt": "2026-03-06T01:15:14.507Z"
+  },
+  {
+    "id": "tpl-empty",
+    "name": "Empty — Custom Steps Only",
+    "description": "An empty template with no pre-configured steps. Add your own custom provisioning steps.",
+    "icon": "📦",
+    "tags": [
+      "custom",
+      "empty"
+    ],
+    "steps": [],
+    "defaultConfig": {
+      "instanceType": "t3.medium",
+      "region": "us-east-1",
+      "ami": "ami-0c7217cdde317cfec",
+      "diskSizeGb": 30,
+      "tags": {}
+    },
+    "createdAt": "2026-03-06T01:15:14.507Z",
+    "updatedAt": "2026-03-06T01:15:14.507Z"
+  }
+]
