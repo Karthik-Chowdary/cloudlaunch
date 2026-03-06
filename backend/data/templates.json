@@ -55,8 +55,8 @@
       "diskSizeGb": 50,
       "tags": {}
     },
-    "createdAt": "2026-03-06T03:44:10.599Z",
-    "updatedAt": "2026-03-06T03:44:10.599Z"
+    "createdAt": "2026-03-06T03:50:15.738Z",
+    "updatedAt": "2026-03-06T03:50:15.738Z"
   },
   {
     "id": "tpl-dev-workstation",
@@ -132,8 +132,8 @@
       "diskSizeGb": 30,
       "tags": {}
     },
-    "createdAt": "2026-03-06T03:44:10.599Z",
-    "updatedAt": "2026-03-06T03:44:10.599Z"
+    "createdAt": "2026-03-06T03:50:15.738Z",
+    "updatedAt": "2026-03-06T03:50:15.738Z"
   },
   {
     "id": "tpl-gpu-ml",
@@ -210,8 +210,8 @@
       "diskSizeGb": 100,
       "tags": {}
     },
-    "createdAt": "2026-03-06T03:44:10.599Z",
-    "updatedAt": "2026-03-06T03:44:10.599Z"
+    "createdAt": "2026-03-06T03:50:15.738Z",
+    "updatedAt": "2026-03-06T03:50:15.738Z"
   },
   {
     "id": "tpl-empty",
@@ -230,7 +230,7 @@
       "diskSizeGb": 30,
       "tags": {}
     },
-    "createdAt": "2026-03-06T03:44:10.599Z",
-    "updatedAt": "2026-03-06T03:44:10.599Z"
+    "createdAt": "2026-03-06T03:50:15.738Z",
+    "updatedAt": "2026-03-06T03:50:15.738Z"
   }
 ]
