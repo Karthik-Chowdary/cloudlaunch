@@ -10,8 +10,8 @@ export const config = {
     region: process.env.AWS_REGION || 'us-east-1',
   },
   defaults: {
-    ami: process.env.DEFAULT_AMI || 'ami-0c7217cdde317cfec', // Ubuntu 22.04 LTS us-east-1
-    instanceType: process.env.DEFAULT_INSTANCE_TYPE || 't3.medium',
+    ami: process.env.DEFAULT_AMI || 'ami-04680790a315cd58d', // Ubuntu 22.04 LTS us-east-1 (2026-02)
+    instanceType: process.env.DEFAULT_INSTANCE_TYPE || 't3.micro',
     diskSizeGb: parseInt(process.env.DEFAULT_DISK_SIZE_GB || '30', 10),
   },
   ssh: {

@@ -49,14 +49,14 @@
       }
     ],
     "defaultConfig": {
-      "instanceType": "t3.medium",
+      "instanceType": "t3.micro",
       "region": "us-east-1",
-      "ami": "ami-0c7217cdde317cfec",
+      "ami": "ami-04680790a315cd58d",
       "diskSizeGb": 50,
       "tags": {}
     },
-    "createdAt": "2026-03-06T01:15:14.507Z",
-    "updatedAt": "2026-03-06T01:15:14.507Z"
+    "createdAt": "2026-03-06T01:24:52.090Z",
+    "updatedAt": "2026-03-06T01:24:52.090Z"
   },
   {
     "id": "tpl-dev-workstation",
@@ -126,14 +126,14 @@
       }
     ],
     "defaultConfig": {
-      "instanceType": "t3.medium",
+      "instanceType": "t3.micro",
       "region": "us-east-1",
-      "ami": "ami-0c7217cdde317cfec",
+      "ami": "ami-04680790a315cd58d",
       "diskSizeGb": 30,
       "tags": {}
     },
-    "createdAt": "2026-03-06T01:15:14.507Z",
-    "updatedAt": "2026-03-06T01:15:14.507Z"
+    "createdAt": "2026-03-06T01:24:52.090Z",
+    "updatedAt": "2026-03-06T01:24:52.090Z"
   },
   {
     "id": "tpl-gpu-ml",
@@ -206,12 +206,12 @@
     "defaultConfig": {
       "instanceType": "p3.2xlarge",
       "region": "us-east-1",
-      "ami": "ami-0c7217cdde317cfec",
+      "ami": "ami-04680790a315cd58d",
       "diskSizeGb": 100,
       "tags": {}
     },
-    "createdAt": "2026-03-06T01:15:14.507Z",
-    "updatedAt": "2026-03-06T01:15:14.507Z"
+    "createdAt": "2026-03-06T01:24:52.090Z",
+    "updatedAt": "2026-03-06T01:24:52.090Z"
   },
   {
     "id": "tpl-empty",
@@ -224,13 +224,13 @@
     ],
     "steps": [],
     "defaultConfig": {
-      "instanceType": "t3.medium",
+      "instanceType": "t3.micro",
       "region": "us-east-1",
-      "ami": "ami-0c7217cdde317cfec",
+      "ami": "ami-04680790a315cd58d",
       "diskSizeGb": 30,
       "tags": {}
     },
-    "createdAt": "2026-03-06T01:15:14.507Z",
-    "updatedAt": "2026-03-06T01:15:14.507Z"
+    "createdAt": "2026-03-06T01:24:52.090Z",
+    "updatedAt": "2026-03-06T01:24:52.090Z"
   }
 ]
