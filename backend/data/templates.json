@@ -15,8 +15,8 @@
         "id": "k8s-step-1",
         "name": "Install prerequisites",
         "description": "Install Docker, k3d, kubectl, and Helm",
-        "script": "#!/bin/bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\n\n# Install Docker\ncurl -fsSL https://get.docker.com | sh\nsudo usermod -aG docker ubuntu\n\n# Install k3d\ncurl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash\n\n# Install kubectl\ncurl -LO \"https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl\"\nchmod +x kubectl && sudo mv kubectl /usr/local/bin/\n\n# Install Helm\ncurl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash\n\necho \"Prerequisites installed successfully\"",
-        "timeout": 600,
+        "script": "#!/bin/bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\n\necho \"Waiting for apt locks to clear...\"\nwhile sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do\n  echo \"  apt is locked, waiting 5s...\"\n  sleep 5\ndone\necho \"apt locks clear\"\n\n# Kill unattended-upgrades if running\nsudo systemctl stop unattended-upgrades 2>/dev/null || true\nsudo systemctl disable unattended-upgrades 2>/dev/null || true\n\necho \"Installing Docker...\"\ncurl -fsSL https://get.docker.com | sh\nsudo usermod -aG docker ubuntu\n\necho \"Installing k3d...\"\ncurl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash\n\necho \"Installing kubectl...\"\ncurl -LO \"https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl\"\nchmod +x kubectl && sudo mv kubectl /usr/local/bin/\n\necho \"Installing Helm...\"\ncurl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash\n\necho \"Verifying installs...\"\ndocker --version\nk3d --version\nkubectl version --client\nhelm version --short\n\necho \"Prerequisites installed successfully\"",
+        "timeout": 900,
         "continueOnError": false,
         "order": 1
       },
@@ -24,7 +24,7 @@
         "id": "k8s-step-2",
         "name": "Clone local-k8s-platform repo",
         "description": "Clone the local-k8s-platform repository",
-        "script": "#!/bin/bash\nset -euo pipefail\ncd /home/ubuntu\ngit clone https://github.com/brevdev/local-k8s-platform.git || echo \"Repo may already exist\"\ncd local-k8s-platform\necho \"Repository cloned successfully\"",
+        "script": "#!/bin/bash\nset -euo pipefail\ncd /home/ubuntu\ngit clone https://github.com/Karthik-Chowdary/local-k8s-platform.git || echo \"Repo may already exist\"\ncd local-k8s-platform\necho \"Repository cloned successfully\"",
         "timeout": 120,
         "continueOnError": false,
         "order": 2
@@ -55,8 +55,8 @@
       "diskSizeGb": 50,
       "tags": {}
     },
-    "createdAt": "2026-03-06T01:24:52.090Z",
-    "updatedAt": "2026-03-06T01:24:52.090Z"
+    "createdAt": "2026-03-06T03:44:10.599Z",
+    "updatedAt": "2026-03-06T03:44:10.599Z"
   },
   {
     "id": "tpl-dev-workstation",
@@ -132,8 +132,8 @@
       "diskSizeGb": 30,
       "tags": {}
     },
-    "createdAt": "2026-03-06T01:24:52.090Z",
-    "updatedAt": "2026-03-06T01:24:52.090Z"
+    "createdAt": "2026-03-06T03:44:10.599Z",
+    "updatedAt": "2026-03-06T03:44:10.599Z"
   },
   {
     "id": "tpl-gpu-ml",
@@ -210,8 +210,8 @@
       "diskSizeGb": 100,
       "tags": {}
     },
-    "createdAt": "2026-03-06T01:24:52.090Z",
-    "updatedAt": "2026-03-06T01:24:52.090Z"
+    "createdAt": "2026-03-06T03:44:10.599Z",
+    "updatedAt": "2026-03-06T03:44:10.599Z"
   },
   {
     "id": "tpl-empty",
@@ -230,7 +230,7 @@
       "diskSizeGb": 30,
       "tags": {}
     },
-    "createdAt": "2026-03-06T01:24:52.090Z",
-    "updatedAt": "2026-03-06T01:24:52.090Z"
+    "createdAt": "2026-03-06T03:44:10.599Z",
+    "updatedAt": "2026-03-06T03:44:10.599Z"
   }
 ]

@@ -37,7 +37,7 @@ export default function LaunchWizard() {
   const [selectedTemplate, setSelectedTemplate] = useState<LaunchableTemplate | null>(null);
 
   const [vmName, setVmName] = useState(generateName());
-  const [instanceType, setInstanceType] = useState('t3.medium');
+  const [instanceType, setInstanceType] = useState('t3.micro');
   const [region, setRegion] = useState('us-east-1');
   const [diskSize, setDiskSize] = useState(50);
   const [steps, setSteps] = useState<LaunchStep[]>([]);

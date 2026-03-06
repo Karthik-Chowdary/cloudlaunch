@@ -25,22 +25,39 @@ function getBuiltInTemplates(): LaunchableTemplate[] {
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
 
-# Install Docker
+echo "Waiting for apt locks to clear..."
+while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
+  echo "  apt is locked, waiting 5s..."
+  sleep 5
+done
+echo "apt locks clear"
+
+# Kill unattended-upgrades if running
+sudo systemctl stop unattended-upgrades 2>/dev/null || true
+sudo systemctl disable unattended-upgrades 2>/dev/null || true
+
+echo "Installing Docker..."
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker ubuntu
 
-# Install k3d
+echo "Installing k3d..."
 curl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash
 
-# Install kubectl
+echo "Installing kubectl..."
 curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
 chmod +x kubectl && sudo mv kubectl /usr/local/bin/
 
-# Install Helm
+echo "Installing Helm..."
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
+echo "Verifying installs..."
+docker --version
+k3d --version
+kubectl version --client
+helm version --short
+
 echo "Prerequisites installed successfully"`,
-      timeout: 600,
+      timeout: 900,
       continueOnError: false,
       order: 1,
     },
@@ -51,7 +68,7 @@ echo "Prerequisites installed successfully"`,
       script: `#!/bin/bash
 set -euo pipefail
 cd /home/ubuntu
-git clone https://github.com/brevdev/local-k8s-platform.git || echo "Repo may already exist"
+git clone https://github.com/Karthik-Chowdary/local-k8s-platform.git || echo "Repo may already exist"
 cd local-k8s-platform
 echo "Repository cloned successfully"`,
       timeout: 120,

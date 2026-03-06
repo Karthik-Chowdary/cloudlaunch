@@ -32,10 +32,18 @@ async function executeLaunchFlow(vmId: string): Promise<void> {
     logger.info(`[${vmId}] Creating/reusing security group: ${SG_NAME}`);
     wsManager.sendVMUpdate(vmId, { phase: 'creating_security_group' });
 
-    const securityGroupId = await awsService.createSecurityGroup(SG_NAME);
+    const securityGroupId = await awsService.createSecurityGroup(SG_NAME, undefined, vm.config.region);
     vmStore.setVMAwsDetails(vmId, { securityGroupId });
 
-    // Step 3: Launch EC2 instance
+    // Step 3: Resolve AMI for the target region
+    logger.info(`[${vmId}] Resolving Ubuntu AMI for region ${vm.config.region}`);
+    wsManager.sendVMUpdate(vmId, { phase: 'resolving_ami' });
+    const resolvedAmi = await awsService.resolveUbuntuAMI(vm.config.region);
+    vm.config.ami = resolvedAmi;
+    vmStore.updateVM(vmId, { config: vm.config });
+    logger.info(`[${vmId}] Using AMI ${resolvedAmi}`);
+
+    // Step 4: Launch EC2 instance
     logger.info(`[${vmId}] Launching EC2 instance`);
     wsManager.sendVMUpdate(vmId, { phase: 'launching_instance' });
 

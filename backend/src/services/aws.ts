@@ -74,9 +74,10 @@ export async function deleteKeyPair(name: string): Promise<void> {
 
 export async function createSecurityGroup(
   name: string,
-  vpcId?: string
+  vpcId?: string,
+  region?: string
 ): Promise<string> {
-  const ec2 = getEC2Client();
+  const ec2 = getEC2Client(region);
   logger.info(`Creating security group: ${name}`);
 
   try {
@@ -420,6 +421,39 @@ export async function listAMIs(
   } catch (err: unknown) {
     const error = err as Error;
     logger.error(`Failed to list AMIs: ${error.message}`);
+    throw error;
+  }
+}
+
+// Resolve the latest Ubuntu 22.04 AMI for a given region
+export async function resolveUbuntuAMI(region: string): Promise<string> {
+  const ec2 = getEC2Client(region);
+
+  try {
+    const result = await ec2.send(
+      new DescribeImagesCommand({
+        Owners: ['099720109477'], // Canonical
+        Filters: [
+          { Name: 'name', Values: ['ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*'] },
+          { Name: 'state', Values: ['available'] },
+        ],
+      })
+    );
+
+    const images = (result.Images || []).sort(
+      (a, b) => (b.CreationDate || '').localeCompare(a.CreationDate || '')
+    );
+
+    if (images.length === 0) {
+      throw new Error(`No Ubuntu 22.04 AMI found in region ${region}`);
+    }
+
+    const ami = images[0].ImageId!;
+    logger.info(`Resolved Ubuntu 22.04 AMI for ${region}: ${ami}`);
+    return ami;
+  } catch (err: unknown) {
+    const error = err as Error;
+    logger.error(`Failed to resolve AMI for ${region}: ${error.message}`);
     throw error;
   }
 }

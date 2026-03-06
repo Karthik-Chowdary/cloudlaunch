@@ -1,4 +1,5 @@
 import http from 'http';
+import path from 'path';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -13,7 +14,7 @@ const app = express();
 const server = http.createServer(app);
 
 // Middleware
-app.use(helmet());
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(morgan('combined'));
@@ -21,14 +22,13 @@ app.use(morgan('combined'));
 // Routes
 app.use('/api', routes);
 
-// Root endpoint
-app.get('/', (_req, res) => {
-  res.json({
-    service: 'CloudLaunch',
-    version: '1.0.0',
-    docs: '/api/health',
-    websocket: '/ws',
-  });
+// Serve frontend static files
+const publicDir = path.join(__dirname, '..', 'public');
+app.use(express.static(publicDir));
+
+// SPA fallback — serve index.html for all non-API routes
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(publicDir, 'index.html'));
 });
 
 // Error handler (must be last)

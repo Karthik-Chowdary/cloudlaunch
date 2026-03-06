@@ -86,7 +86,7 @@ function executeStep(
 
     const wrappedScript = `set -e\n${step.script}`;
 
-    client.exec(wrappedScript, { pty: false }, (err, stream) => {
+    client.exec(wrappedScript, { pty: true }, (err, stream) => {
       if (err) {
         clearTimeout(timer);
         if (timedOut) return;
