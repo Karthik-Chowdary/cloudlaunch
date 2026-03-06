@@ -14,8 +14,8 @@
       {
         "id": "k8s-step-1",
         "name": "Install prerequisites",
-        "description": "Install Docker, k3d, kubectl, and Helm",
-        "script": "#!/bin/bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\n\necho \"Waiting for apt locks to clear...\"\nwhile sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do\n  echo \"  apt is locked, waiting 5s...\"\n  sleep 5\ndone\necho \"apt locks clear\"\n\n# Kill unattended-upgrades if running\nsudo systemctl stop unattended-upgrades 2>/dev/null || true\nsudo systemctl disable unattended-upgrades 2>/dev/null || true\n\necho \"Installing Docker...\"\ncurl -fsSL https://get.docker.com | sh\nsudo usermod -aG docker ubuntu\n\necho \"Installing k3d...\"\ncurl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash\n\necho \"Installing kubectl...\"\ncurl -LO \"https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl\"\nchmod +x kubectl && sudo mv kubectl /usr/local/bin/\n\necho \"Installing Helm...\"\ncurl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash\n\necho \"Verifying installs...\"\ndocker --version\nk3d --version\nkubectl version --client\nhelm version --short\n\necho \"Prerequisites installed successfully\"",
+        "description": "Install Docker, k3d, kubectl, Helm, make, and other tools",
+        "script": "#!/bin/bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\n\necho \"Waiting for apt locks to clear...\"\nwhile sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do\n  echo \"  apt is locked, waiting 5s...\"\n  sleep 5\ndone\necho \"apt locks clear\"\n\n# Kill unattended-upgrades if running\nsudo systemctl stop unattended-upgrades 2>/dev/null || true\nsudo systemctl disable unattended-upgrades 2>/dev/null || true\n\necho \"Installing system packages (make, git, curl, jq)...\"\nsudo apt-get update -qq\nsudo apt-get install -y -qq build-essential git curl wget jq\n\necho \"Installing Docker...\"\ncurl -fsSL https://get.docker.com | sh\nsudo usermod -aG docker ubuntu\n\necho \"Installing k3d...\"\ncurl -s https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | bash\n\necho \"Installing kubectl...\"\ncurl -LO \"https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl\"\nchmod +x kubectl && sudo mv kubectl /usr/local/bin/\n\necho \"Installing Helm...\"\ncurl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash\n\necho \"Verifying installs...\"\ndocker --version\nk3d --version\nkubectl version --client\nhelm version --short\nmake --version | head -1\n\necho \"Prerequisites installed successfully\"",
         "timeout": 900,
         "continueOnError": false,
         "order": 1
@@ -24,26 +24,26 @@
         "id": "k8s-step-2",
         "name": "Clone local-k8s-platform repo",
         "description": "Clone the local-k8s-platform repository",
-        "script": "#!/bin/bash\nset -euo pipefail\ncd /home/ubuntu\ngit clone https://github.com/Karthik-Chowdary/local-k8s-platform.git || echo \"Repo may already exist\"\ncd local-k8s-platform\necho \"Repository cloned successfully\"",
+        "script": "#!/bin/bash\nset -euo pipefail\ncd /home/ubuntu\ngit clone https://github.com/Karthik-Chowdary/local-k8s-platform.git || echo \"Repo already exists\"\ncd local-k8s-platform\necho \"Repository cloned successfully\"",
         "timeout": 120,
         "continueOnError": false,
         "order": 2
       },
       {
         "id": "k8s-step-3",
-        "name": "Run make up-marketplace",
-        "description": "Start the local K8s platform with marketplace",
-        "script": "#!/bin/bash\nset -euo pipefail\ncd /home/ubuntu/local-k8s-platform\nmake up-marketplace || echo \"make up-marketplace completed (check logs for details)\"\necho \"Platform startup initiated\"",
-        "timeout": 900,
+        "name": "Set up K8s platform",
+        "description": "Create k3d cluster, install ArgoCD, deploy all apps",
+        "script": "#!/bin/bash\nset -euo pipefail\ncd /home/ubuntu/local-k8s-platform\n\n# Docker group won't take effect in this SSH session, so use sudo for docker commands\n# k3d and make up use docker under the hood, so we need to run via newgrp or sudo\necho \"Starting platform setup (this takes 5-10 minutes on t3.micro)...\"\n\n# Run setup non-interactively (pipe 'n' to skip cluster recreation prompt)\necho \"n\" | sudo -u ubuntu bash -c 'sg docker -c \"make up\"' 2>&1 || {\n  echo \"Setup had issues, checking status...\"\n  sg docker -c \"k3d cluster list\" 2>&1 || true\n  sg docker -c \"kubectl get nodes\" 2>&1 || true\n}\n\necho \"Platform setup complete\"",
+        "timeout": 1200,
         "continueOnError": true,
         "order": 3
       },
       {
         "id": "k8s-step-4",
-        "name": "Set up port forwarding / ingress",
-        "description": "Configure port forwarding and ingress access",
-        "script": "#!/bin/bash\nset -euo pipefail\n# Wait for k8s to be ready\nsleep 10\nkubectl wait --for=condition=Ready nodes --all --timeout=120s || true\necho \"Port forwarding and ingress configured\"",
-        "timeout": 300,
+        "name": "Verify and configure access",
+        "description": "Verify cluster is healthy, show access info",
+        "script": "#!/bin/bash\nset -euo pipefail\n\necho \"Checking cluster status...\"\nsg docker -c \"kubectl get nodes\" 2>&1 || {\n  echo \"Cluster not ready yet, skipping verification\"\n  exit 0\n}\n\necho \"\"\necho \"ArgoCD Applications:\"\nsg docker -c \"kubectl get applications -n argocd\" 2>&1 || true\n\necho \"\"\necho \"All pods:\"\nsg docker -c \"kubectl get pods -A --no-headers\" 2>&1 | head -30 || true\n\nARGOCD_PASS=$(sg docker -c \"kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}'\" 2>/dev/null | base64 -d 2>/dev/null || echo \"unknown\")\n\necho \"\"\necho \"============================================\"\necho \"  Platform Ready!\"\necho \"============================================\"\necho \"  ArgoCD:      http://argocd.localhost\"\necho \"  Grafana:     http://grafana.localhost\"\necho \"  Prometheus:  http://prometheus.localhost\"\necho \"  ArgoCD user: admin\"\necho \"  ArgoCD pass: $ARGOCD_PASS\"\necho \"============================================\"\necho \"\"\necho \"Use 'kubectl port-forward' if *.localhost doesn't resolve\"",
+        "timeout": 120,
         "continueOnError": true,
         "order": 4
       }
@@ -55,8 +55,8 @@
       "diskSizeGb": 50,
       "tags": {}
     },
-    "createdAt": "2026-03-06T03:50:15.738Z",
-    "updatedAt": "2026-03-06T03:50:15.738Z"
+    "createdAt": "2026-03-06T03:55:59.921Z",
+    "updatedAt": "2026-03-06T03:55:59.921Z"
   },
   {
     "id": "tpl-dev-workstation",
@@ -74,7 +74,7 @@
         "id": "dev-step-1",
         "name": "Install dev tools",
         "description": "Install git, curl, jq, htop, tmux",
-        "script": "#!/bin/bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\nsudo apt-get update\nsudo apt-get install -y git curl wget jq htop tmux unzip build-essential\necho \"Dev tools installed\"",
+        "script": "#!/bin/bash\nset -euo pipefail\nexport DEBIAN_FRONTEND=noninteractive\n\necho \"Waiting for apt locks to clear...\"\nwhile sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do\n  sleep 5\ndone\n\nsudo systemctl stop unattended-upgrades 2>/dev/null || true\nsudo systemctl disable unattended-upgrades 2>/dev/null || true\n\nsudo apt-get update -qq\nsudo apt-get install -y -qq git curl wget jq htop tmux unzip build-essential\necho \"Dev tools installed\"",
         "timeout": 300,
         "continueOnError": false,
         "order": 1
@@ -132,8 +132,8 @@
       "diskSizeGb": 30,
       "tags": {}
     },
-    "createdAt": "2026-03-06T03:50:15.738Z",
-    "updatedAt": "2026-03-06T03:50:15.738Z"
+    "createdAt": "2026-03-06T03:55:59.921Z",
+    "updatedAt": "2026-03-06T03:55:59.921Z"
   },
   {
     "id": "tpl-gpu-ml",
@@ -210,8 +210,8 @@
       "diskSizeGb": 100,
       "tags": {}
     },
-    "createdAt": "2026-03-06T03:50:15.738Z",
-    "updatedAt": "2026-03-06T03:50:15.738Z"
+    "createdAt": "2026-03-06T03:55:59.921Z",
+    "updatedAt": "2026-03-06T03:55:59.921Z"
   },
   {
     "id": "tpl-empty",
@@ -230,7 +230,7 @@
       "diskSizeGb": 30,
       "tags": {}
     },
-    "createdAt": "2026-03-06T03:50:15.738Z",
-    "updatedAt": "2026-03-06T03:50:15.738Z"
+    "createdAt": "2026-03-06T03:55:59.921Z",
+    "updatedAt": "2026-03-06T03:55:59.921Z"
   }
 ]

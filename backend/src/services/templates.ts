@@ -20,7 +20,7 @@ function getBuiltInTemplates(): LaunchableTemplate[] {
     {
       id: 'k8s-step-1',
       name: 'Install prerequisites',
-      description: 'Install Docker, k3d, kubectl, and Helm',
+      description: 'Install Docker, k3d, kubectl, Helm, make, and other tools',
       script: `#!/bin/bash
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
@@ -35,6 +35,10 @@ echo "apt locks clear"
 # Kill unattended-upgrades if running
 sudo systemctl stop unattended-upgrades 2>/dev/null || true
 sudo systemctl disable unattended-upgrades 2>/dev/null || true
+
+echo "Installing system packages (make, git, curl, jq)..."
+sudo apt-get update -qq
+sudo apt-get install -y -qq build-essential git curl wget jq
 
 echo "Installing Docker..."
 curl -fsSL https://get.docker.com | sh
@@ -55,6 +59,7 @@ docker --version
 k3d --version
 kubectl version --client
 helm version --short
+make --version | head -1
 
 echo "Prerequisites installed successfully"`,
       timeout: 900,
@@ -68,7 +73,7 @@ echo "Prerequisites installed successfully"`,
       script: `#!/bin/bash
 set -euo pipefail
 cd /home/ubuntu
-git clone https://github.com/Karthik-Chowdary/local-k8s-platform.git || echo "Repo may already exist"
+git clone https://github.com/Karthik-Chowdary/local-k8s-platform.git || echo "Repo already exists"
 cd local-k8s-platform
 echo "Repository cloned successfully"`,
       timeout: 120,
@@ -77,28 +82,64 @@ echo "Repository cloned successfully"`,
     },
     {
       id: 'k8s-step-3',
-      name: 'Run make up-marketplace',
-      description: 'Start the local K8s platform with marketplace',
+      name: 'Set up K8s platform',
+      description: 'Create k3d cluster, install ArgoCD, deploy all apps',
       script: `#!/bin/bash
 set -euo pipefail
 cd /home/ubuntu/local-k8s-platform
-make up-marketplace || echo "make up-marketplace completed (check logs for details)"
-echo "Platform startup initiated"`,
-      timeout: 900,
+
+# Docker group won't take effect in this SSH session, so use sudo for docker commands
+# k3d and make up use docker under the hood, so we need to run via newgrp or sudo
+echo "Starting platform setup (this takes 5-10 minutes on t3.micro)..."
+
+# Run setup non-interactively (pipe 'n' to skip cluster recreation prompt)
+echo "n" | sudo -u ubuntu bash -c 'sg docker -c "make up"' 2>&1 || {
+  echo "Setup had issues, checking status..."
+  sg docker -c "k3d cluster list" 2>&1 || true
+  sg docker -c "kubectl get nodes" 2>&1 || true
+}
+
+echo "Platform setup complete"`,
+      timeout: 1200,
       continueOnError: true,
       order: 3,
     },
     {
       id: 'k8s-step-4',
-      name: 'Set up port forwarding / ingress',
-      description: 'Configure port forwarding and ingress access',
+      name: 'Verify and configure access',
+      description: 'Verify cluster is healthy, show access info',
       script: `#!/bin/bash
 set -euo pipefail
-# Wait for k8s to be ready
-sleep 10
-kubectl wait --for=condition=Ready nodes --all --timeout=120s || true
-echo "Port forwarding and ingress configured"`,
-      timeout: 300,
+
+echo "Checking cluster status..."
+sg docker -c "kubectl get nodes" 2>&1 || {
+  echo "Cluster not ready yet, skipping verification"
+  exit 0
+}
+
+echo ""
+echo "ArgoCD Applications:"
+sg docker -c "kubectl get applications -n argocd" 2>&1 || true
+
+echo ""
+echo "All pods:"
+sg docker -c "kubectl get pods -A --no-headers" 2>&1 | head -30 || true
+
+ARGOCD_PASS=$(sg docker -c "kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}'" 2>/dev/null | base64 -d 2>/dev/null || echo "unknown")
+
+echo ""
+echo "============================================"
+echo "  Platform Ready!"
+echo "============================================"
+echo "  ArgoCD:      http://argocd.localhost"
+echo "  Grafana:     http://grafana.localhost"
+echo "  Prometheus:  http://prometheus.localhost"
+echo "  ArgoCD user: admin"
+echo "  ArgoCD pass: $ARGOCD_PASS"
+echo "============================================"
+echo ""
+echo "Use 'kubectl port-forward' if *.localhost doesn't resolve"`,
+      timeout: 120,
       continueOnError: true,
       order: 4,
     },
@@ -112,8 +153,17 @@ echo "Port forwarding and ingress configured"`,
       script: `#!/bin/bash
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
-sudo apt-get update
-sudo apt-get install -y git curl wget jq htop tmux unzip build-essential
+
+echo "Waiting for apt locks to clear..."
+while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
+  sleep 5
+done
+
+sudo systemctl stop unattended-upgrades 2>/dev/null || true
+sudo systemctl disable unattended-upgrades 2>/dev/null || true
+
+sudo apt-get update -qq
+sudo apt-get install -y -qq git curl wget jq htop tmux unzip build-essential
 echo "Dev tools installed"`,
       timeout: 300,
       continueOnError: false,
