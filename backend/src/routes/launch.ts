@@ -4,6 +4,8 @@ import * as vmStore from '../services/vmStore';
 import * as awsService from '../services/aws';
 import * as templateService from '../services/templates';
 import { provisionVM } from '../services/provisioner';
+import { createJoinToken } from '../services/teleport-service';
+import { createTeleportAgentStep } from '../services/teleport-step';
 import wsManager from '../websocket';
 import { config } from '../config';
 import logger from '../middleware/logger';
@@ -80,6 +82,33 @@ async function executeLaunchFlow(vmId: string): Promise<void> {
     const updatedVM = vmStore.getVM(vmId);
     if (!updatedVM) {
       throw new Error(`VM ${vmId} disappeared during launch`);
+    }
+
+    // Step 5a: Inject Teleport agent step (if enabled)
+    if (config.teleport.enabled) {
+      try {
+        const authServer = config.teleport.authServer || `${updatedVM.publicIp}:443`;
+        const joinToken = createJoinToken(updatedVM.name, '30m');
+
+        const teleportStep = createTeleportAgentStep(joinToken, authServer);
+
+        // Append the step to the VM's step list
+        updatedVM.steps.push(teleportStep);
+        vmStore.updateVM(vmId, { steps: updatedVM.steps });
+
+        // Add a pending step progress entry
+        vmStore.updateVMStepProgress(vmId, {
+          stepId: teleportStep.id,
+          status: 'pending',
+          output: '',
+        });
+
+        logger.info(`[${vmId}] Teleport agent step injected (token: ${joinToken.substring(0, 8)}...)`);
+      } catch (err: unknown) {
+        const error = err as Error;
+        logger.warn(`[${vmId}] Failed to create Teleport join token, skipping Teleport step: ${error.message}`);
+        // Non-fatal — VM will still work, just won't have web terminal
+      }
     }
 
     if (updatedVM.steps.length > 0) {

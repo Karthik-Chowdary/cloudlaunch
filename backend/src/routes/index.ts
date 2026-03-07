@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import vmRoutes from './vms';
 import templateRoutes from './templates';
 import launchRoutes from './launch';
+import connectRoutes from './connect';
 import * as awsService from '../services/aws';
 import logger from '../middleware/logger';
 
@@ -9,6 +10,7 @@ const router = Router();
 
 // Mount sub-routes
 router.use('/vms', vmRoutes);
+router.use('/vms', connectRoutes);  // adds GET /api/vms/:id/connect
 router.use('/templates', templateRoutes);
 router.use('/launch', launchRoutes);
 

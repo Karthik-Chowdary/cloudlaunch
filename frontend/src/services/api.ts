@@ -24,6 +24,10 @@ export const terminateVM = (id: string) => request<{ message: string }>(`/vms/${
 export const getConnectionInfo = (id: string) =>
   request<{ connection: { sshCommand: string; cursorUri: string; privateKey: string; sshConfig: string; host: string; user: string } }>(`/vms/${id}/connect`, { method: 'POST' }).then(r => r.connection);
 
+// Teleport web terminal connect
+export const getVMConnectInfo = (id: string) =>
+  request<{ url: string | null; status: 'ready' | 'pending' | 'unavailable'; message: string; retryAfterSeconds?: number }>(`/vms/${id}/connect`);
+
 // Launch
 export const launchVM = (data: LaunchRequest) =>
   request<{ vm: VM; message: string }>('/launch', { method: 'POST', body: JSON.stringify(data) }).then(r => r.vm);

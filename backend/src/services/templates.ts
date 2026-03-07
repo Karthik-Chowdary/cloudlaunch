@@ -24,6 +24,7 @@ function getBuiltInTemplates(): LaunchableTemplate[] {
       script: `#!/bin/bash
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
 
 echo "Waiting for apt locks to clear..."
 while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
@@ -36,9 +37,13 @@ echo "apt locks clear"
 sudo systemctl stop unattended-upgrades 2>/dev/null || true
 sudo systemctl disable unattended-upgrades 2>/dev/null || true
 
+# Suppress needrestart interactive prompts
+sudo mkdir -p /etc/needrestart/conf.d
+echo '\\$nrconf{restart} = "a";' | sudo tee /etc/needrestart/conf.d/99-autorestart.conf >/dev/null
+
 echo "Installing system packages (make, git, curl, jq)..."
-sudo apt-get update -qq
-sudo apt-get install -y -qq build-essential git curl wget jq
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get update -qq
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y -qq build-essential git curl wget jq
 
 echo "Installing Docker..."
 curl -fsSL https://get.docker.com | sh
@@ -90,7 +95,7 @@ cd /home/ubuntu/local-k8s-platform
 
 # Docker group won't take effect in this SSH session, so use sudo for docker commands
 # k3d and make up use docker under the hood, so we need to run via newgrp or sudo
-echo "Starting platform setup (this takes 5-10 minutes on t3.micro)..."
+echo "Starting platform setup (this takes 3-5 minutes)..."
 
 # Run setup non-interactively (pipe 'n' to skip cluster recreation prompt)
 echo "n" | sudo -u ubuntu bash -c 'sg docker -c "make up"' 2>&1 || {
@@ -153,6 +158,7 @@ echo "Use 'kubectl port-forward' if *.localhost doesn't resolve"`,
       script: `#!/bin/bash
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
 
 echo "Waiting for apt locks to clear..."
 while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || sudo fuser /var/lib/apt/lists/lock >/dev/null 2>&1; do
@@ -162,8 +168,12 @@ done
 sudo systemctl stop unattended-upgrades 2>/dev/null || true
 sudo systemctl disable unattended-upgrades 2>/dev/null || true
 
-sudo apt-get update -qq
-sudo apt-get install -y -qq git curl wget jq htop tmux unzip build-essential
+# Suppress needrestart interactive prompts
+sudo mkdir -p /etc/needrestart/conf.d
+echo '\\$nrconf{restart} = "a";' | sudo tee /etc/needrestart/conf.d/99-autorestart.conf >/dev/null
+
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get update -qq
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y -qq git curl wget jq htop tmux unzip build-essential
 echo "Dev tools installed"`,
       timeout: 300,
       continueOnError: false,
@@ -212,6 +222,7 @@ echo "Go 1.22 installed"`,
       script: `#!/bin/bash
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker ubuntu
 docker --version
@@ -246,7 +257,8 @@ echo "kubectl and helm installed"`,
       script: `#!/bin/bash
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
-sudo apt-get install -y zsh vim
+export NEEDRESTART_MODE=a
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y zsh vim
 sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended || true
 sudo chsh -s $(which zsh) ubuntu || true
 echo "vim and zsh configured"`,
@@ -264,13 +276,19 @@ echo "vim and zsh configured"`,
       script: `#!/bin/bash
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
-sudo apt-get update
-sudo apt-get install -y linux-headers-$(uname -r)
+export NEEDRESTART_MODE=a
+
+# Suppress needrestart interactive prompts
+sudo mkdir -p /etc/needrestart/conf.d
+echo '\\$nrconf{restart} = "a";' | sudo tee /etc/needrestart/conf.d/99-autorestart.conf >/dev/null
+
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get update
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y linux-headers-$(uname -r)
 distribution=$(. /etc/os-release;echo $ID$VERSION_ID | sed -e 's/\\.//g')
 wget -q https://developer.download.nvidia.com/compute/cuda/repos/$distribution/x86_64/cuda-keyring_1.1-1_all.deb
 sudo dpkg -i cuda-keyring_1.1-1_all.deb
-sudo apt-get update
-sudo apt-get install -y nvidia-driver-550
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get update
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y nvidia-driver-550
 rm cuda-keyring_1.1-1_all.deb
 echo "NVIDIA drivers installed (reboot may be required)"`,
       timeout: 600,
@@ -284,7 +302,8 @@ echo "NVIDIA drivers installed (reboot may be required)"`,
       script: `#!/bin/bash
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
-sudo apt-get install -y cuda-toolkit-12-4
+export NEEDRESTART_MODE=a
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y cuda-toolkit-12-4
 echo 'export PATH=/usr/local/cuda/bin:$PATH' | sudo tee -a /etc/profile.d/cuda.sh
 echo 'export LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH' | sudo tee -a /etc/profile.d/cuda.sh
 export PATH=/usr/local/cuda/bin:$PATH
@@ -301,6 +320,7 @@ echo "CUDA toolkit installed"`,
       script: `#!/bin/bash
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
+export NEEDRESTART_MODE=a
 # Docker
 curl -fsSL https://get.docker.com | sh
 sudo usermod -aG docker ubuntu
@@ -311,8 +331,8 @@ curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dear
 curl -s -L "https://nvidia.github.io/libnvidia-container/$distribution/libnvidia-container.list" | \
   sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
   sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
-sudo apt-get update
-sudo apt-get install -y nvidia-container-toolkit
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get update
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y nvidia-container-toolkit
 sudo nvidia-ctk runtime configure --runtime=docker
 sudo systemctl restart docker
 echo "Docker + nvidia-container-toolkit installed"`,
@@ -327,10 +347,11 @@ echo "Docker + nvidia-container-toolkit installed"`,
       script: `#!/bin/bash
 set -euo pipefail
 export DEBIAN_FRONTEND=noninteractive
-sudo apt-get install -y software-properties-common
+export NEEDRESTART_MODE=a
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y software-properties-common
 sudo add-apt-repository -y ppa:deadsnakes/ppa
-sudo apt-get update
-sudo apt-get install -y python3.11 python3.11-venv python3.11-dev python3-pip
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get update
+sudo DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a apt-get install -y python3.11 python3.11-venv python3.11-dev python3-pip
 sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
 python3 --version
 echo "Python 3.11 installed"`,
@@ -387,7 +408,7 @@ echo "Jupyter Lab installed. Start with: jupyter lab"`,
       icon: '☸️',
       tags: ['kubernetes', 'k3d', 'docker', 'platform'],
       steps: localK8sSteps,
-      defaultConfig: { ...defaultVMConfig, diskSizeGb: 50 },
+      defaultConfig: { ...defaultVMConfig, instanceType: 'm7i-flex.large', diskSizeGb: 50 },
       createdAt: now,
       updatedAt: now,
     },

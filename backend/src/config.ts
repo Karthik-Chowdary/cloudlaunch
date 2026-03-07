@@ -21,4 +21,13 @@ export const config = {
     username: process.env.SSH_USERNAME || 'ubuntu',
   },
   dataDir: process.env.DATA_DIR || './data',
+  teleport: {
+    authServer: process.env.TELEPORT_AUTH_SERVER || '',
+    cluster: process.env.TELEPORT_CLUSTER || 'teleport.localhost',
+    proxyUrl: process.env.TELEPORT_PROXY_URL || 'https://teleport.localhost',
+    tctlPath: process.env.TCTL_PATH || '/usr/local/bin/tctl',
+    sshUser: process.env.TELEPORT_SSH_USER || 'ubuntu',
+    agentVersion: process.env.TELEPORT_AGENT_VERSION || '17',
+    enabled: process.env.TELEPORT_ENABLED !== 'false',
+  },
 };

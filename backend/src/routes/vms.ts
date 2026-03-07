@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import * as vmStore from '../services/vmStore';
 import * as awsService from '../services/aws';
 import { getConnectionInfo } from '../services/cursor';
+import { removeNode } from '../services/teleport-service';
 import wsManager from '../websocket';
 import logger from '../middleware/logger';
 
@@ -62,6 +63,15 @@ router.delete('/:id', async (req: Request, res: Response) => {
       awsService
         .terminateInstance(vm.awsInstanceId, vm.config.region)
         .then(() => {
+          // Deregister from Teleport (best-effort)
+          try {
+            removeNode(vm.name);
+            logger.info(`Teleport node removed for VM ${id}`);
+          } catch (teleportErr: unknown) {
+            const tErr = teleportErr as Error;
+            logger.warn(`Failed to remove Teleport node for VM ${id}: ${tErr.message}`);
+          }
+
           vmStore.updateVMStatus(id, 'terminated');
           wsManager.sendVMUpdate(id, { status: 'terminated' });
         })
