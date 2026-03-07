@@ -61,7 +61,7 @@ teleport:
   join_params:
     token_name: "${joinToken}"
     method: token
-  auth_server: "${authServer}"
+  proxy_server: "${authServer}"
   log:
     output: stderr
     severity: INFO
@@ -88,6 +88,16 @@ echo "Teleport config written to /etc/teleport.yaml"
 # -----------------------------------------------
 # 3. Enable and start Teleport systemd service
 # -----------------------------------------------
+
+# Override systemd to use --insecure flag (self-signed proxy cert)
+sudo mkdir -p /etc/systemd/system/teleport.service.d
+sudo tee /etc/systemd/system/teleport.service.d/insecure.conf > /dev/null <<'SVCOVERRIDE'
+[Service]
+ExecStart=
+ExecStart=/usr/local/bin/teleport start --config /etc/teleport.yaml --pid-file=/run/teleport.pid --insecure
+SVCOVERRIDE
+
+sudo systemctl daemon-reload
 sudo systemctl enable teleport
 sudo systemctl start teleport
 
